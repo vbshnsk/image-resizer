@@ -1,10 +1,10 @@
 #include "image.h"
 #include <conio.h>
+#include <iostream>
 
 using namespace std;
 
 int main() {
-	image hash("16pixel.bmp");
-	hash.setHeader();
+	openImage test("16pixel.bmp");
 	_getch();
 }

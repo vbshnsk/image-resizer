@@ -1,10 +1,11 @@
 ﻿#pragma once
 #pragma pack(1)
+
 #define _CRT_SECURE_NO_WARNINGS
+
 #include <stdint.h>
-#include <fstream>
 #include <iostream>
-#include <string>
+#include <fstream>
 
 typedef struct {
 	int8_t id[2];
@@ -30,23 +31,61 @@ typedef struct {
 	int8_t blueComponent;
 } PIXELDATA;
 
-class image {
-private:
+class Image {
+protected:
 	BMPHEAD header;
 	PIXELDATA** pixels;
-	const char* name;
 public:
-	image(const char* name) {
+	const char* name;
+	Image() {};
+	Image(const char* name) {
 		this->name = name;
-	};
-	void setHeader() {
-		std::fstream filepp;
-		filepp.open(name, std::ios::in | std::ios::binary);
-		char* buff = new char[54]; // all of the header info, needs to be transfered to BMPHEAD
-		filepp.read(buff, sizeof(this->header));
 	}
 
-	
-	~image() {};
+};
+
+
+class openImage : private Image {
+private:
+	void setHeader() {
+		/*                                                   same thing but using cstdio
+		FILE* file;
+		file = fopen(name, "rb");
+		fread(&this->header, sizeof(this->header), 1, file);
+		*/
+		std::ifstream file;
+		file.open(name, std::ios::binary);
+		file.read(reinterpret_cast<char*>(&this->header), sizeof(this->header));
+		file.close();
+	}
+	void setPixels() {
+		pixels = new PIXELDATA * [header.depth];
+		for (int i = 0; i < header.depth; i++) {
+			pixels[i] = new PIXELDATA[header.width];
+		}
+
+		size_t padding;
+		if (3 * header.width % 4)
+			padding = 4 - 3 * header.width % 4;
+		else
+			padding = 0;
+
+		std::ifstream file;
+		file.open(name, std::ios::binary);
+		file.seekg(sizeof(this->header), std::ios::beg);
+		for (int i = 0; i < header.depth; i++) {
+			for (int k = 0; k < header.width; k++) {
+				file.read(reinterpret_cast<char*>(&this->pixels[i][k]), sizeof(this->pixels[i][k]));
+			}
+			file.seekg(padding, std::ios::cur);
+		}
+		file.close();
+	}
+public:
+	openImage(const char* name) {
+		this->name = name;
+		this->setHeader();
+		this->setPixels();
+	};
 };
 
