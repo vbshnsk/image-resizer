@@ -33,20 +33,24 @@ typedef struct {
 class image {
 private:
 	BMPHEAD header;
-	PIXELDATA** pixels;
+	PIXELDATA** pixels;  //might move to another class
 	const char* name;
 public:
+	void setHeader() {
+		/*                                                   same thing but using cstdio
+		FILE* file;
+		file = fopen(name, "rb");
+		fread(&this->header, sizeof(this->header), 1, file);
+		*/
+		std::ifstream filepp;
+		filepp.open(name, std::ios::binary);
+		filepp.read(reinterpret_cast<char*>(&this->header), sizeof(this->header));
+
+	}
 	image(const char* name) {
 		this->name = name;
+		this->setHeader();
 	};
-	void setHeader() {
-		std::fstream filepp;
-		filepp.open(name, std::ios::in | std::ios::binary);
-		char* buff = new char[54]; // all of the header info, needs to be transfered to BMPHEAD
-		filepp.read(buff, sizeof(this->header));
-	}
-
-	
 	~image() {};
 };
 
