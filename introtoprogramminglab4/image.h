@@ -33,26 +33,48 @@ typedef struct {
 
 class Image {
 protected:
-	BMPHEAD header;
 	PIXELDATA** pixels;
+	BMPHEAD header;
 public:
 	const char* name;
 	Image() {};
-	Image(const char* name) {
-		this->name = name;
+	~Image() {
+		for (int i = 0; i < this->header.depth; i++)
+			delete[] pixels[i];
+		delete pixels;
 	}
+	void createFile() {
+		std::ofstream file;
+		file.open(name, std::ios::binary);
+		file.write(reinterpret_cast<char*>(&this->header), sizeof(this->header));
+		
+		char null;
+		int padding;
+		if (3 * this->header.width % 4)
+			padding = 4 - 3 * this->header.width % 4;
+		else
+			padding = 0;
 
+		for (int i = 0; i < this->header.depth; i++) {
+			for (int k = 0; k < this->header.width; k++) {
+				file.write(reinterpret_cast<char*>(&this->pixels[i][k]), sizeof(pixels[i][k]));
+			}
+			file.write(&null, padding);
+		}
+		file.close();
+	}
+	BMPHEAD getHeader() {
+		return this->header;
+	}
+	PIXELDATA** getPixels() {
+		return this->pixels;
+	}
 };
 
 
-class openImage : private Image {
+class openImage : public Image {
 private:
 	void setHeader() {
-		/*                                                   same thing but using cstdio
-		FILE* file;
-		file = fopen(name, "rb");
-		fread(&this->header, sizeof(this->header), 1, file);
-		*/
 		std::ifstream file;
 		file.open(name, std::ios::binary);
 		file.read(reinterpret_cast<char*>(&this->header), sizeof(this->header));
@@ -65,16 +87,16 @@ private:
 		}
 
 		size_t padding;
-		if (3 * header.width % 4)
-			padding = 4 - 3 * header.width % 4;
+		if (3 * this->header.width % 4)
+			padding = 4 - 3 * this->header.width % 4;
 		else
 			padding = 0;
 
 		std::ifstream file;
 		file.open(name, std::ios::binary);
 		file.seekg(sizeof(this->header), std::ios::beg);
-		for (int i = 0; i < header.depth; i++) {
-			for (int k = 0; k < header.width; k++) {
+		for (int i = 0; i < this->header.depth; i++) {
+			for (int k = 0; k < this->header.width; k++) {
 				file.read(reinterpret_cast<char*>(&this->pixels[i][k]), sizeof(this->pixels[i][k]));
 			}
 			file.seekg(padding, std::ios::cur);
@@ -87,5 +109,43 @@ public:
 		this->setHeader();
 		this->setPixels();
 	};
+};
+
+class newImage : public Image {
+private:
+	PIXELDATA** interpolate() {
+	}
+	void setHeader(Image& source, int pow) {
+		this->header = source.getHeader();
+		this->header.width *= pow;
+		this->header.depth *= pow;
+
+		size_t padding;
+		if (3 * this->header.width % 4)
+			padding = 4 - 3 *this->header.width % 4;
+		else
+			padding = 0;
+
+		this->header.filesize = this->header.headersize + (this->header.width * 3 + padding) * this->header.depth;
+	}
+	void setPixels(Image & source, int pow) {
+		PIXELDATA** temp = new PIXELDATA * [this->header.depth];
+		for (int i = 0; i < this->header.depth; i++) {
+			temp[i] = new PIXELDATA[this->header.width];
+		}
+		PIXELDATA** sourceP = source.getPixels();
+		for (int i = 0; i < this->header.depth; i++) {
+			for (int k = 0; k < this->header.width; k++) {
+				temp[i][k] = sourceP[i / pow][k / pow];
+			}
+		}
+		this->pixels = temp;
+	}
+public:
+	newImage(const char* name, Image & source, int pow) {
+		this->name = name;
+		this->setHeader(source, pow);
+		this->setPixels(source, pow);
+	}
 };
 
