@@ -117,9 +117,14 @@ public:
 class newImage : public Image {
 private:
 
+	unsigned int getRGBValue(int8_t value) {
+		return (value + 256) % 256;
+	}
+
+
 	void interpolate(Image& source) {
-		float xdif = (((float)source.getHeader().width - 1) / header.width);
-		float ydif = (((float)source.getHeader().depth - 1) / header.depth);
+		float xdif = ((float)(source.getHeader().width - 1) / (header.width - 1));
+		float ydif = ((float)(source.getHeader().depth - 1) / (header.depth - 1));
 
 		PIXELDATA * *temp = source.getPixels();
 		PIXELDATA pixel;
@@ -129,6 +134,7 @@ private:
 		for (int i = 0; i < header.depth; i++)
 			for (int j = 0; j < header.width; j++) {
 
+
 				x = j * xdif;
 				y = i * ydif;
 
@@ -137,9 +143,6 @@ private:
 				p2y = (int)y;
 				p1x = (int)x + 1;
 				p1y = (int)y + 1;
-
-				//i fixed one pretty dumb bug
-				//there's still some problem with how border pixels are treated i guess idk
 
 				float x1 = (p1x - x) / (p1x - p2x),
 					x2 = (x - p2x) / (p1x - p2x),
@@ -152,16 +155,16 @@ private:
 				if ((int)y + 1 < source.getHeader().depth)	p1y = (int)y + 1;
 				else p1y = (int)y;
 
-				inter1 = x1 * ((temp[p2y][p2x].blueComponent + 256) % 256) + x2 * ((temp[p2y][p1x].blueComponent + 256) % 256);
-				inter2 = x1 * ((temp[p1y][p2x].blueComponent + 256) % 256) + x2 * ((temp[p1y][p1x].blueComponent + 256) % 256);
+				inter1 = x1 * getRGBValue(temp[p2y][p2x].blueComponent) + x2 * getRGBValue(temp[p2y][p1x].blueComponent);
+				inter2 = x1 * getRGBValue(temp[p1y][p2x].blueComponent) + x2 * getRGBValue(temp[p1y][p1x].blueComponent);
 				pixel.blueComponent = y1 * inter1 + y2 * inter2;
 
-				inter1 = x1 * ((temp[p2y][p2x].redComponent + 256) % 256) + x2 * ((temp[p2y][p1x].redComponent + 256) % 256);
-				inter2 = x1 * ((temp[p1y][p2x].redComponent + 256) % 256) + x2 * ((temp[p1y][p1x].redComponent + 256) % 256);
+				inter1 = x1 * getRGBValue(temp[p2y][p2x].redComponent) + x2 * getRGBValue(temp[p2y][p1x].redComponent);
+				inter2 = x1 * getRGBValue(temp[p1y][p2x].redComponent) + x2 * getRGBValue(temp[p1y][p1x].redComponent);
 				pixel.redComponent = y1 * inter1 + y2 * inter2;
 
-				inter1 = x1 * ((temp[p2y][p2x].greenComponent + 256) % 256) + x2 * ((temp[p2y][p1x].greenComponent + 256) % 256);
-				inter2 = x1 * ((temp[p1y][p2x].greenComponent + 256) % 256) + x2 * ((temp[p1y][p1x].greenComponent + 256) % 256);
+				inter1 = x1 * getRGBValue(temp[p2y][p2x].greenComponent) + x2 * getRGBValue(temp[p2y][p1x].greenComponent);
+				inter2 = x1 * getRGBValue(temp[p1y][p2x].greenComponent) + x2 * getRGBValue(temp[p1y][p1x].greenComponent);
 				pixel.greenComponent = y1 * inter1 + y2 * inter2;
 
 				pixels[i][j] = pixel;
@@ -173,8 +176,8 @@ private:
 
 	void setHeader(Image & source, double pow) {
 		this->header = source.getHeader();
-		this->header.width = round(this->header.width * pow);
-		this->header.depth = round(this->header.depth * pow);
+		this->header.width = (int)(this->header.width * pow);
+		this->header.depth = (int)(this->header.depth * pow);
 
 		size_t padding;
 		if (3 * this->header.width % 4)

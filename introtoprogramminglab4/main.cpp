@@ -5,8 +5,8 @@
 using namespace std;
 
 int main() {
-	openImage toResize("1111.bmp");
-	newImage Resized("test.bmp", toResize, 1.5);
+	openImage toResize("bmp.bmp");
+	newImage Resized("test.bmp", toResize, 10);
 	Resized.createFile();
 	_getch();
 }
