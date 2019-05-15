@@ -4,8 +4,9 @@
 
 using namespace std;
 
-int main(int argc, char* argv[]) {
-	openImage toResize("Untitled.bmp");
-	newImage Resized("newtest.bmp", toResize, 20);
+int main() {
+	openImage toResize("1111.bmp");
+	newImage Resized("test.bmp", toResize, 1.5);
 	Resized.createFile();
+	_getch();
 }

@@ -1,5 +1,5 @@
 ﻿#pragma once
-#pragma pack(1)
+#pragma pack(2)
 
 #define _CRT_SECURE_NO_WARNINGS
 
@@ -38,6 +38,9 @@ protected:
 public:
 	const char* name;
 	Image() {};
+	Image(char* name) {
+		this->name = name;
+	};
 	~Image() {
 		for (int i = 0; i < this->header.depth; i++)
 			delete[] pixels[i];
@@ -47,7 +50,7 @@ public:
 		std::ofstream file;
 		file.open(name, std::ios::binary);
 		file.write(reinterpret_cast<char*>(&this->header), sizeof(this->header));
-		
+
 		char null;
 		int padding;
 		if (3 * this->header.width % 4)
@@ -113,39 +116,87 @@ public:
 
 class newImage : public Image {
 private:
-	PIXELDATA** interpolate() {
+
+	void interpolate(Image& source) {
+		float xdif = (((float)source.getHeader().width - 1) / header.width);
+		float ydif = (((float)source.getHeader().depth - 1) / header.depth);
+
+		PIXELDATA * *temp = source.getPixels();
+		PIXELDATA pixel;
+		float x, y;
+		int p1x, p1y, p2x, p2y;
+		int inter1, inter2;
+		for (int i = 0; i < header.depth; i++)
+			for (int j = 0; j < header.width; j++) {
+
+				x = j * xdif;
+				y = i * ydif;
+
+
+				p2x = (int)x;
+				p2y = (int)y;
+				p1x = (int)x + 1;
+				p1y = (int)y + 1;
+
+				//i fixed one pretty dumb bug
+				//there's still some problem with how border pixels are treated i guess idk
+
+				float x1 = (p1x - x) / (p1x - p2x),
+					x2 = (x - p2x) / (p1x - p2x),
+					y1 = (p1y - y) / (p1y - p2y),
+					y2 = (y - p2y) / (p1y - p2y);
+
+
+				if ((int)x + 1 < source.getHeader().width)	p1x = (int)x + 1;
+				else p1x = (int)x;
+				if ((int)y + 1 < source.getHeader().depth)	p1y = (int)y + 1;
+				else p1y = (int)y;
+
+				inter1 = x1 * ((temp[p2y][p2x].blueComponent + 256) % 256) + x2 * ((temp[p2y][p1x].blueComponent + 256) % 256);
+				inter2 = x1 * ((temp[p1y][p2x].blueComponent + 256) % 256) + x2 * ((temp[p1y][p1x].blueComponent + 256) % 256);
+				pixel.blueComponent = y1 * inter1 + y2 * inter2;
+
+				inter1 = x1 * ((temp[p2y][p2x].redComponent + 256) % 256) + x2 * ((temp[p2y][p1x].redComponent + 256) % 256);
+				inter2 = x1 * ((temp[p1y][p2x].redComponent + 256) % 256) + x2 * ((temp[p1y][p1x].redComponent + 256) % 256);
+				pixel.redComponent = y1 * inter1 + y2 * inter2;
+
+				inter1 = x1 * ((temp[p2y][p2x].greenComponent + 256) % 256) + x2 * ((temp[p2y][p1x].greenComponent + 256) % 256);
+				inter2 = x1 * ((temp[p1y][p2x].greenComponent + 256) % 256) + x2 * ((temp[p1y][p1x].greenComponent + 256) % 256);
+				pixel.greenComponent = y1 * inter1 + y2 * inter2;
+
+				pixels[i][j] = pixel;
+			}
+
 	}
-	void setHeader(Image& source, int pow) {
+
+
+
+	void setHeader(Image & source, double pow) {
 		this->header = source.getHeader();
-		this->header.width *= pow;
-		this->header.depth *= pow;
+		this->header.width = round(this->header.width * pow);
+		this->header.depth = round(this->header.depth * pow);
 
 		size_t padding;
 		if (3 * this->header.width % 4)
-			padding = 4 - 3 *this->header.width % 4;
+			padding = 4 - 3 * this->header.width % 4;
 		else
 			padding = 0;
 
 		this->header.filesize = this->header.headersize + (this->header.width * 3 + padding) * this->header.depth;
 	}
-	void setPixels(Image & source, int pow) {
+
+	void setPixels(Image & source) {
 		PIXELDATA** temp = new PIXELDATA * [this->header.depth];
 		for (int i = 0; i < this->header.depth; i++) {
 			temp[i] = new PIXELDATA[this->header.width];
 		}
-		PIXELDATA** sourceP = source.getPixels();
-		for (int i = 0; i < this->header.depth; i++) {
-			for (int k = 0; k < this->header.width; k++) {
-				temp[i][k] = sourceP[i / pow][k / pow];
-			}
-		}
-		this->pixels = temp;
+		pixels = temp;
+		interpolate(source);
 	}
 public:
-	newImage(const char* name, Image & source, int pow) {
+	newImage(const char* name, Image & source, double pow) {
 		this->name = name;
 		this->setHeader(source, pow);
-		this->setPixels(source, pow);
+		this->setPixels(source);
 	}
 };
-
