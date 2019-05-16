@@ -1,10 +1,12 @@
 #include "image.h"
 #include <conio.h>
+#include <iostream>
 
 using namespace std;
 
 int main() {
-	image hash("16pixel.bmp");
-	hash.setHeader();
+	openImage toResize("bmp.bmp");
+	newImage Resized("test.bmp", toResize, 10);
+	Resized.createFile();
 	_getch();
 }
